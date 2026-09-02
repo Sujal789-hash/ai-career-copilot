@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     console.info("ROADMAP: user verified");
 
     // 4. Fetch profile with fallback
-    let profile: any = {
+    let profile: Record<string, unknown> = {
       name: "Developer",
       education: "Not provided",
       careerGoal: "Software Developer",
@@ -41,8 +41,9 @@ export async function POST(request: Request) {
 
     try {
       const profileSnapshot = await adminDb.collection("users").doc(uid).get();
-      if (profileSnapshot.exists) {
-        profile = profileSnapshot.data();
+      const data = profileSnapshot.data();
+      if (profileSnapshot.exists && data) {
+        profile = data as Record<string, unknown>;
       }
     } catch (dbErr) {
       console.warn("ROADMAP: database fetch skipped or failed", dbErr);

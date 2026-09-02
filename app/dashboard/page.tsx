@@ -109,7 +109,7 @@ export default function Dashboard() {
         {/* Welcome Section */}
         <div className="mb-8 text-left">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-            Welcome back, {profile?.name ? profile.name : "Developer"}
+            Welcome back, {profile?.name || currentUser?.displayName || currentUser?.email?.split("@")[0] || "Developer"}
           </h1>
           <p className="text-zinc-400 text-xs sm:text-sm mt-1.5">
             Your personal AI career workspace. Review your skill readiness & tools below.

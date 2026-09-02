@@ -27,7 +27,7 @@ type Message = {
 interface ConversationItem {
   id: string;
   title: string;
-  updatedAt?: any;
+  updatedAt?: unknown;
 }
 
 const SUGGESTIONS = [
