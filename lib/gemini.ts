@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -18,10 +18,7 @@ export const GEMINI_MODELS = [
 export const GEMINI_MODEL = GEMINI_MODELS[0];
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-export const gemini = new GoogleGenAI({
-  apiKey: geminiApiKey,
-  httpOptions: { timeout: 90_000 },
-});
+export const gemini = new GoogleGenerativeAI(geminiApiKey);
 
 type GeminiResponse = {
   candidates?: Array<{
