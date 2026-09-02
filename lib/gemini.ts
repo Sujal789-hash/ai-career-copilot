@@ -1,12 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-  throw new Error("GEMINI_API_KEY is not configured on the server.");
-}
-
-const geminiApiKey = apiKey;
+const getApiKey = () => process.env.GEMINI_API_KEY || "";
 
 // Model fallback chain: primary fast stable model -> lightweight model -> preview model
 export const GEMINI_MODELS = [
@@ -18,7 +12,7 @@ export const GEMINI_MODELS = [
 export const GEMINI_MODEL = GEMINI_MODELS[0];
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-export const gemini = new GoogleGenerativeAI(geminiApiKey);
+export const gemini = new GoogleGenerativeAI(getApiKey() || "dummy-key-for-build");
 
 type GeminiResponse = {
   candidates?: Array<{
@@ -34,17 +28,22 @@ type GeminiResponse = {
  * Robust text generation helper with automatic model fallback chain.
  */
 export async function generateGeminiText(prompt: string, maxOutputTokens: number = 2500) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured on the server. Please add GEMINI_API_KEY to your environment variables.");
+  }
+
   let lastError: Error | null = null;
 
   for (const model of GEMINI_MODELS) {
     try {
       const response = await fetch(
-        `${GEMINI_API_BASE}/models/${model}:generateContent?key=${geminiApiKey}`,
+        `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-goog-api-key": geminiApiKey,
+            "x-goog-api-key": apiKey,
           },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
