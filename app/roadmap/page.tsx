@@ -72,9 +72,17 @@ export default function Roadmap() {
         },
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { roadmap?: string; error?: string } = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = { error: responseText.slice(0, 150) || `Server error (${response.status})` };
+        }
+      }
 
-      if (!response.ok) {
+      if (!response.ok || data.error) {
         throw new Error(data.error || `Request failed with status ${response.status}`);
       }
 

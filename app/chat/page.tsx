@@ -166,13 +166,21 @@ export default function Chat() {
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error || "Gemini request failed");
+      const responseText = await response.text();
+      let data: { reply?: string; error?: string } = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = { error: responseText.slice(0, 150) || `Server error (${response.status})` };
+        }
       }
 
-      const assistantMessage = data.reply;
+      if (!response.ok || data.error) {
+        throw new Error(data.error || `Server error (${response.status})`);
+      }
+
+      const assistantMessage = data.reply || "No response generated.";
 
       setMessages((previous) => [
         ...previous,

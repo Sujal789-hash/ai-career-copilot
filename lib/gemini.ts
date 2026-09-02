@@ -4,9 +4,10 @@ const getApiKey = () => process.env.GEMINI_API_KEY || "";
 
 // Model fallback chain: primary fast stable model -> lightweight model -> preview model
 export const GEMINI_MODELS = [
-  "gemini-3.5-flash",
-  "gemini-3.1-flash-lite",
-  "gemini-3.7-flash",
+  "gemini-2.5-flash",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
 ];
 
 export const GEMINI_MODEL = GEMINI_MODELS[0];
@@ -49,7 +50,7 @@ export async function generateGeminiText(prompt: string, maxOutputTokens: number
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens },
           }),
-          signal: AbortSignal.timeout(90_000),
+          signal: AbortSignal.timeout(45_000),
         }
       );
 

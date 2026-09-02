@@ -69,13 +69,22 @@ export default function ResumeAnalyzer() {
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || data.error) {
-        throw new Error(data.error || `Request failed with status ${response.status}`);
+      const responseText = await response.text();
+      let data: Partial<ResumeAnalysis> & { error?: string } = {};
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = { error: responseText.slice(0, 150) || `Server error (${response.status})` };
+        }
       }
 
-      setResult(data);
+      if (!response.ok || data.error) {
+        const errMessage = typeof data.error === "string" ? data.error : `Request failed with status ${response.status}`;
+        throw new Error(errMessage);
+      }
+
+      setResult(data as ResumeAnalysis);
 
       try {
         await addDoc(collection(db, "users", user.uid, "resumes"), {
