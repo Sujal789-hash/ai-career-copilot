@@ -7,36 +7,54 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  try {
-    console.log("ROADMAP: request received");
+  console.log("ROADMAP: request received");
 
-    // 1. Check authentication header
+  try {
+    // 1. Check authorization header
     const authorization = request.headers.get("authorization");
 
-    if (!authorization?.startsWith("Bearer ")) {
+    if (!authorization || !authorization.startsWith("Bearer ")) {
+      console.warn("ROADMAP ERROR: Missing or invalid authorization header");
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: "Authentication required. Please sign in again." },
         { status: 401 }
       );
     }
 
-    // 2. Extract Firebase ID token
-    const idToken = authorization.substring(7);
+    console.log("ROADMAP: authorization header present");
 
-    console.log("ROADMAP: verifying user");
+    // 2. Extract & verify Firebase ID token
+    const idToken = authorization.substring(7).trim();
+    if (!idToken) {
+      console.warn("ROADMAP ERROR: Empty Bearer token");
+      return NextResponse.json(
+        { error: "Authentication token missing." },
+        { status: 401 }
+      );
+    }
 
-    // 3. Verify Firebase user
-    const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    console.log("ROADMAP: verifying Firebase user");
 
-    console.info("ROADMAP: user verified");
+    let uid = "";
+    try {
+      const decodedToken = await adminAuth.verifyIdToken(idToken);
+      uid = decodedToken.uid;
+      console.log("ROADMAP: user verified");
+    } catch (authError) {
+      const safeAuthErr = authError instanceof Error ? authError.message : String(authError);
+      console.error("ROADMAP ERROR: Token verification failed:", safeAuthErr);
+      return NextResponse.json(
+        { error: "Your authentication session has expired or is invalid. Please sign in again." },
+        { status: 401 }
+      );
+    }
 
-    // 4. Fetch profile with fallback
+    // 3. Fetch user profile with fallback
     let profile: Record<string, unknown> = {
       name: "Developer",
-      education: "Not provided",
-      careerGoal: "Software Developer",
-      skills: ["Problem Solving", "Web Development"]
+      education: "Not specified",
+      careerGoal: "Software Engineering",
+      skills: ["Problem Solving", "Software Development"],
     };
 
     try {
@@ -44,148 +62,104 @@ export async function POST(request: Request) {
       const data = profileSnapshot.data();
       if (profileSnapshot.exists && data) {
         profile = data as Record<string, unknown>;
+        console.log("ROADMAP: profile loaded from Firestore");
+      } else {
+        console.log("ROADMAP: profile snapshot empty, using default fallback");
       }
     } catch (dbErr) {
-      console.warn("ROADMAP: database fetch skipped or failed", dbErr);
+      const safeDbErr = dbErr instanceof Error ? dbErr.message : String(dbErr);
+      console.warn("ROADMAP ERROR: Database fetch skipped or failed:", safeDbErr);
     }
 
     const skills = Array.isArray(profile?.skills)
       ? profile.skills.join(", ")
       : typeof profile?.skills === "string"
         ? profile.skills
-        : "Not provided";
+        : "Not specified";
 
-    // 5. Create personalized roadmap prompt
+    // 4. Create prompt
     const prompt = `
-You are Career Copilot, an expert AI career mentor.
+You are Career Copilot, an expert AI career mentor and senior tech lead.
 
-Create a personalized career roadmap for this user.
+Create a highly detailed, personalized career roadmap for this user.
 
 USER PROFILE
+- Name: ${profile?.name || "User"}
+- Education: ${profile?.education || "Not specified"}
+- Target Goal: ${profile?.careerGoal || "Software Engineering"}
+- Current Skills: ${skills}
 
-Name: ${profile?.name || "User"}
-Education: ${profile?.education || "Not provided"}
-Career Goal: ${profile?.careerGoal || "Not provided"}
-Current Skills: ${skills}
-
-Build the roadmap based on the user's existing skills.
-
-Do not recommend beginner topics that the user already knows unless revision is necessary.
-
-Keep the roadmap practical, specific, and actionable.
-
-Use this structure:
-
+Structure the response clearly using Markdown formatting with sections:
 # 🎯 Career Roadmap
-
-## 👤 Current Profile
-
-Give a short assessment of the user's current situation.
-
-## 📊 Skill Assessment
-
-Explain:
-- What the user already knows
-- What they are good at
-- What skills are missing
-
-## 🚀 Phase 1
-
+## 👤 Current Profile Assessment
+## 📊 Skill Assessment & Gap Analysis
+## 🚀 Phase 1: Core Fundamentals & Immediate Focus
 ### Goal
-Explain the goal.
-
 ### Skills to Learn
-- Skill
-- Skill
-- Skill
-
-### Project
-Suggest one practical project.
-
-## 🚀 Phase 2
-
+### Hands-on Project
+## 🚀 Phase 2: Intermediate Mastery & System Design
 ### Goal
-Explain the goal.
-
 ### Skills to Learn
-- Skill
-- Skill
-- Skill
-
-### Project
-Suggest one practical project.
-
-## 🚀 Phase 3
-
+### Hands-on Project
+## 🚀 Phase 3: Advanced Specialization
 ### Goal
-Explain the goal.
-
 ### Skills to Learn
-- Skill
-- Skill
-- Skill
-
-### Project
-Suggest one practical project.
-
-## 🚀 Phase 4
-
+### Hands-on Project
+## 🚀 Phase 4: Production Readiness & Portfolio Polish
 ### Goal
-Explain the goal.
-
 ### Skills to Learn
-- Skill
-- Skill
-- Skill
+### Hands-on Project
+## 💼 Technical Interview Preparation
+## 🏆 Capstone Portfolio Project
+## 📅 Recommended Weekly Study Schedule
 
-### Project
-Suggest one practical project.
-
-## 💼 Interview Preparation
-
-List important interview topics.
-
-## 🏆 Final Portfolio Project
-
-Suggest one impressive portfolio project related to the user's career goal.
-
-## 📅 Weekly Plan
-
-Create a practical weekly learning schedule.
-
-Be specific to the user's current skills and career goal.
+Make it specific to the user's current background and target career goal.
 `;
 
     console.log("ROADMAP: calling Gemini");
 
-    // 6. Generate roadmap with Gemini
-    const roadmap = await generateGeminiText(prompt, 4000);
+    // 5. Generate roadmap with Gemini
+    let roadmap = "";
+    try {
+      roadmap = await generateGeminiText(prompt, 3500);
+      console.log("ROADMAP: Gemini response received");
+      console.log("ROADMAP: roadmap generated");
+    } catch (geminiError) {
+      const safeGeminiErr = geminiError instanceof Error ? geminiError.message : String(geminiError);
+      console.error("ROADMAP ERROR: Gemini generation failed:", safeGeminiErr);
 
-    console.log("ROADMAP: roadmap generated successfully");
+      if (/GEMINI_API_KEY|API key/i.test(safeGeminiErr)) {
+        return NextResponse.json(
+          { error: "GEMINI_API_KEY is not configured in Vercel environment variables." },
+          { status: 503 }
+        );
+      }
 
-    // 7. Return roadmap to frontend
+      return NextResponse.json(
+        { error: "The AI service encountered an error while generating your roadmap. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    if (!roadmap) {
+      console.warn("ROADMAP ERROR: Empty roadmap string returned");
+      return NextResponse.json(
+        { error: "The AI service returned an empty response. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    console.log("ROADMAP: returning response");
     return NextResponse.json({
       roadmap,
     });
   } catch (error) {
-    console.error("ROADMAP: request failed", error);
-
-    const message = error instanceof Error ? error.message : "Failed to generate roadmap";
-    const status = /GEMINI_API_KEY|credential|permission|unauthenticated/i.test(message)
-      ? 503
-      : /token|auth/i.test(message)
-        ? 401
-        : 502;
+    const safeErr = error instanceof Error ? error.message : String(error);
+    console.error("ROADMAP ERROR: Unexpected route exception:", safeErr);
 
     return NextResponse.json(
-      {
-        error: status === 503
-          ? "The AI service is not configured correctly. Please contact support."
-          : status === 401
-            ? "Your session could not be verified. Please sign in again."
-            : "The AI service could not generate a roadmap. Please try again.",
-      },
-      { status }
+      { error: "Unable to generate your roadmap at this time. Please try again." },
+      { status: 500 }
     );
   }
 }

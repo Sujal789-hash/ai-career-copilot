@@ -166,21 +166,35 @@ export default function Chat() {
         }),
       });
 
-      const responseText = await response.text();
-      let data: { reply?: string; error?: string } = {};
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          data = { error: responseText.slice(0, 150) || `Server error (${response.status})` };
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!response.ok) {
+        let errorMessage = `Unable to generate a response. Please try again.`;
+        if (contentType.includes("application/json")) {
+          const errorData = await response.json().catch(() => ({}));
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const text = await response.text().catch(() => "");
+          if (text) {
+            console.error("CHAT API non-JSON response:", text.slice(0, 300));
+          }
         }
+        throw new Error(errorMessage);
       }
 
-      if (!response.ok || data.error) {
-        throw new Error(data.error || `Server error (${response.status})`);
+      if (!contentType.includes("application/json")) {
+        const text = await response.text().catch(() => "");
+        console.error("CHAT API non-JSON response:", text.slice(0, 300));
+        throw new Error("Unable to generate a response. Please try again.");
       }
 
-      const assistantMessage = data.reply || "No response generated.";
+      const data = await response.json().catch(() => null);
+
+      if (!data || !data.reply) {
+        throw new Error(data?.error || "Unable to generate a response. Please try again.");
+      }
+
+      const assistantMessage = data.reply;
 
       setMessages((previous) => [
         ...previous,

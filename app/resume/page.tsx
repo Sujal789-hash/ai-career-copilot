@@ -69,19 +69,32 @@ export default function ResumeAnalyzer() {
         }),
       });
 
-      const responseText = await response.text();
-      let data: Partial<ResumeAnalysis> & { error?: string } = {};
-      if (responseText) {
-        try {
-          data = JSON.parse(responseText);
-        } catch {
-          data = { error: responseText.slice(0, 150) || `Server error (${response.status})` };
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!response.ok) {
+        let errorMessage = `Unable to analyze resume. Please try again.`;
+        if (contentType.includes("application/json")) {
+          const errorData = await response.json().catch(() => ({}));
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          const text = await response.text().catch(() => "");
+          if (text) {
+            console.error("RESUME API non-JSON response:", text.slice(0, 300));
+          }
         }
+        throw new Error(errorMessage);
       }
 
-      if (!response.ok || data.error) {
-        const errMessage = typeof data.error === "string" ? data.error : `Request failed with status ${response.status}`;
-        throw new Error(errMessage);
+      if (!contentType.includes("application/json")) {
+        const text = await response.text().catch(() => "");
+        console.error("RESUME API non-JSON response:", text.slice(0, 300));
+        throw new Error("Unable to analyze resume. Please try again.");
+      }
+
+      const data = await response.json().catch(() => null);
+
+      if (!data || data.error) {
+        throw new Error(data?.error || "Unable to analyze resume. Please try again.");
       }
 
       setResult(data as ResumeAnalysis);
