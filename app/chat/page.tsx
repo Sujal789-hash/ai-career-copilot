@@ -16,7 +16,7 @@ import {
 import { onAuthStateChanged, User, signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import FormattedMarkdown from "@/components/FormattedMarkdown";
 import Logo from "@/components/Logo";
 
 type Message = {
@@ -313,208 +313,224 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* Main Workspace (Chat Area + Right History Sidebar) */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex gap-6 overflow-hidden">
-        {/* Left Side: Active Conversation */}
-        <main className="flex-1 flex flex-col justify-between min-w-0">
-          {/* Chat Messages container */}
-          <div className="flex-1 min-h-[450px] mb-4 flex flex-col justify-start overflow-y-auto pr-1">
-            {loadingHistory ? (
-              <div className="text-center my-auto py-12 text-zinc-400 text-xs flex items-center justify-center gap-3">
-                <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-                Loading conversation messages...
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="text-center my-auto py-12 px-4">
-                <div className="mb-6 flex justify-center">
-                  <Logo className="w-14 h-14" iconClassName="w-7 h-7" />
-                </div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2">
-                  Ask Career Copilot
-                </h1>
-                <p className="text-zinc-400 text-xs max-w-md mx-auto mb-8 leading-relaxed">
-                  Get personalized advice on technical interviews, resume optimization, architecture concepts, or career strategies.
-                </p>
+      {/* Main Workspace (Left History Sidebar + Right Chat Area) */}
+      <div className="flex-1 w-full flex overflow-hidden relative">
+        {/* Mobile Backdrop for Sidebar */}
+        {showHistoryMobile && (
+          <div
+            onClick={() => setShowHistoryMobile(false)}
+            className="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 lg:hidden"
+          />
+        )}
 
-                <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left">
-                  {SUGGESTIONS.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => sendMessage(suggestion)}
-                      className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 text-zinc-300 text-xs font-medium leading-relaxed transition-all hover:bg-zinc-900"
-                    >
-                      ✦ {suggestion}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {messages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`flex flex-col ${
-                      msg.role === "user" ? "items-end" : "items-start"
-                    }`}
-                  >
-                    <div
-                      className={`max-w-3xl rounded-2xl p-5 shadow-lg ${
-                        msg.role === "user"
-                          ? "bg-zinc-100 text-zinc-950 rounded-tr-sm font-medium"
-                          : "bg-zinc-900/80 border border-zinc-800 text-zinc-100 rounded-tl-sm"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        {msg.role === "assistant" ? (
-                          <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
-                            ✦ Career Copilot
-                          </span>
-                        ) : (
-                          <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider">
-                            You
-                          </span>
-                        )}
-                      </div>
-
-                      {msg.role === "assistant" ? (
-                        <div className="prose prose-invert max-w-none text-xs leading-relaxed text-zinc-200">
-                          <ReactMarkdown>{msg.text}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="whitespace-pre-wrap text-xs leading-relaxed">
-                          {msg.text}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {loading && (
-                  <div className="flex items-start">
-                    <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 text-zinc-400 text-xs flex items-center gap-3">
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-                      Generating response...
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-
-          {/* Warnings & Errors */}
-          {saveWarning && (
-            <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
-              {saveWarning}
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-              {error}
-            </div>
-          )}
-
-          {/* Input Box */}
-          <div className="bg-zinc-900/80 border border-zinc-800/90 backdrop-blur-xl rounded-2xl p-3 shadow-xl">
-            <div className="flex gap-2">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Ask a question about your tech career..."
-                rows={2}
-                className="flex-1 bg-transparent border-0 text-white placeholder-zinc-500 text-xs p-3 resize-none focus:outline-none"
-              />
-              <button
-                onClick={() => sendMessage()}
-                disabled={loading || !message.trim() || !user}
-                className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-semibold text-xs shadow-md transition-all disabled:opacity-40 self-end"
-              >
-                {loading ? "Thinking..." : "Send"}
-              </button>
-            </div>
-            <div className="px-3 pb-1 pt-2 flex justify-between text-[11px] text-zinc-500">
-              <span>Enter to send • Shift + Enter for new line</span>
-              <span>Powered by Gemini</span>
-            </div>
-          </div>
-        </main>
-
-        {/* Right Side: Chat History Panel Box */}
+        {/* Left Side: Chat History Panel Box - Docked exactly on the left edge */}
         <aside
-          className={`w-full lg:w-80 bg-zinc-900/70 border border-zinc-800/90 backdrop-blur-xl rounded-2xl p-5 flex flex-col justify-between shrink-0 shadow-xl transition-all ${
+          className={`w-72 sm:w-80 bg-zinc-950/95 border-r border-zinc-800/80 p-4 sm:p-5 flex flex-col justify-between shrink-0 h-full backdrop-blur-xl transition-all z-40 ${
             showHistoryMobile
-              ? "fixed inset-x-4 top-20 bottom-8 z-40 block"
+              ? "fixed inset-y-0 left-0 shadow-2xl block"
               : "hidden lg:flex"
           }`}
         >
-          <div>
-            {/* Header & New Chat Button */}
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
-              <h2 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <span>💬</span> Chat History
-              </h2>
-              <button
-                onClick={startNewChat}
-                className="px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-medium border border-zinc-700/60 transition-all flex items-center gap-1"
-              >
-                <span>+</span> New Chat
-              </button>
+          <div className="flex flex-col h-full justify-between">
+            <div>
+              {/* Header & New Chat Button */}
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800/80">
+                <h2 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>💬</span> Chat History ({conversations.length})
+                </h2>
+                <button
+                  onClick={startNewChat}
+                  className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold border border-cyan-500/30 transition-all flex items-center gap-1.5"
+                >
+                  <span>+</span> New Chat
+                </button>
+              </div>
+
+              {/* Conversation List */}
+              <div className="space-y-1.5 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
+                {conversations.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500 text-xs">
+                    No previous chats yet. Start a new conversation!
+                  </div>
+                ) : (
+                  conversations.map((item) => {
+                    const isActive = item.id === conversationId;
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => selectConversation(item.id)}
+                        className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
+                          isActive
+                            ? "bg-zinc-800/90 border-cyan-500/50 text-white shadow-sm"
+                            : "bg-zinc-900/40 border-zinc-800/60 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-xs text-zinc-500">💬</span>
+                          <span className="text-xs font-medium truncate">
+                            {item.title}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={(e) => deleteConversation(e, item.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-opacity text-xs"
+                          title="Delete chat"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
-            {/* Conversation List */}
-            <div className="space-y-1.5 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-              {conversations.length === 0 ? (
-                <div className="text-center py-10 text-zinc-500 text-xs">
-                  No previous chats yet. Start a new conversation!
+            <div className="pt-4 border-t border-zinc-800/80 text-[11px] text-zinc-500 text-center">
+              Select any chat to switch conversation view
+            </div>
+          </div>
+        </aside>
+
+        {/* Right Side: Active Conversation */}
+        <main className="flex-1 flex flex-col justify-between min-w-0 h-full overflow-hidden bg-zinc-950/40">
+          {/* Chat Messages container */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-8 py-6">
+            <div className="max-w-3xl w-full mx-auto">
+              {loadingHistory ? (
+                <div className="text-center my-auto py-20 text-zinc-400 text-xs flex items-center justify-center gap-3">
+                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+                  Loading conversation messages...
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <div className="mb-6 flex justify-center">
+                    <Logo className="w-14 h-14" iconClassName="w-7 h-7" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">
+                    Ask Career Copilot
+                  </h1>
+                  <p className="text-zinc-400 text-xs sm:text-sm max-w-md mx-auto mb-8 leading-relaxed">
+                    Get personalized advice on technical interviews, resume optimization, architecture concepts, or career strategies.
+                  </p>
+
+                  <div className="grid sm:grid-cols-2 gap-3 max-w-2xl mx-auto text-left">
+                    {SUGGESTIONS.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => sendMessage(suggestion)}
+                        className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 hover:border-cyan-500/40 text-zinc-300 text-xs font-medium leading-relaxed transition-all hover:bg-zinc-900 shadow-sm"
+                      >
+                        ✦ {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                conversations.map((item) => {
-                  const isActive = item.id === conversationId;
-                  return (
+                <div className="space-y-6">
+                  {messages.map((msg, index) => (
                     <div
-                      key={item.id}
-                      onClick={() => selectConversation(item.id)}
-                      className={`group p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                        isActive
-                          ? "bg-zinc-800 border-cyan-500/40 text-white"
-                          : "bg-zinc-950/60 border-zinc-800/60 text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200"
+                      key={index}
+                      className={`flex flex-col ${
+                        msg.role === "user" ? "items-end" : "items-start"
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-xs text-zinc-500">💬</span>
-                        <span className="text-xs font-medium truncate">
-                          {item.title}
-                        </span>
-                      </div>
-
-                      <button
-                        onClick={(e) => deleteConversation(e, item.id)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-zinc-500 hover:text-red-400 transition-opacity text-xs"
-                        title="Delete chat"
+                      <div
+                        className={`max-w-2xl sm:max-w-3xl rounded-2xl p-5 shadow-lg ${
+                          msg.role === "user"
+                            ? "bg-cyan-500 text-zinc-950 rounded-tr-sm font-medium"
+                            : "bg-zinc-900/90 border border-zinc-800 text-zinc-100 rounded-tl-sm shadow-xl"
+                        }`}
                       >
-                        ✕
-                      </button>
+                        <div className="flex items-center gap-2 mb-2">
+                          {msg.role === "assistant" ? (
+                            <span className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
+                              ✦ Career Copilot
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-cyan-950 uppercase tracking-wider">
+                              You
+                            </span>
+                          )}
+                        </div>
+
+                        {msg.role === "assistant" ? (
+                          <FormattedMarkdown content={msg.text} />
+                        ) : (
+                          <p className="whitespace-pre-wrap text-xs sm:text-sm leading-relaxed text-zinc-950">
+                            {msg.text}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  );
-                })
+                  ))}
+
+                  {loading && (
+                    <div className="flex items-start">
+                      <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl rounded-tl-sm p-4 text-zinc-400 text-xs flex items-center gap-3 shadow-lg">
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
+                        Generating response...
+                      </div>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
               )}
             </div>
           </div>
 
-          <div className="pt-4 border-t border-zinc-800 text-[11px] text-zinc-500 text-center">
-            Select any chat to switch conversation view
+          {/* Warnings & Errors */}
+          {saveWarning && (
+            <div className="max-w-3xl w-full mx-auto px-4 mb-2">
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+                {saveWarning}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="max-w-3xl w-full mx-auto px-4 mb-2">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+                {error}
+              </div>
+            </div>
+          )}
+
+          {/* Input Box */}
+          <div className="p-4 sm:p-6 bg-gradient-to-t from-zinc-950 via-zinc-950/90 to-transparent">
+            <div className="max-w-3xl w-full mx-auto bg-zinc-900/90 border border-zinc-800/90 backdrop-blur-xl rounded-2xl p-3 shadow-2xl">
+              <div className="flex gap-2">
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder="Ask a question about your tech career..."
+                  rows={2}
+                  className="flex-1 bg-transparent border-0 text-white placeholder-zinc-500 text-xs sm:text-sm p-3 resize-none focus:outline-none"
+                />
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={loading || !message.trim() || !user}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-semibold text-xs shadow-md transition-all disabled:opacity-40 self-end"
+                >
+                  {loading ? "Thinking..." : "Send"}
+                </button>
+              </div>
+              <div className="px-3 pb-1 pt-2 flex justify-between text-[11px] text-zinc-500">
+                <span>Enter to send • Shift + Enter for new line</span>
+                <span>Powered by Gemini</span>
+              </div>
+            </div>
           </div>
-        </aside>
+        </main>
       </div>
 
-      <footer className="border-t border-zinc-900 py-4 px-6 text-center text-zinc-500 text-xs">
+      <footer className="border-t border-zinc-900 py-3 px-6 text-center text-zinc-500 text-xs">
         <p>© {new Date().getFullYear()} AI Career Copilot</p>
       </footer>
     </div>

@@ -14,7 +14,7 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
+import FormattedMarkdown from "@/components/FormattedMarkdown";
 import Logo from "@/components/Logo";
 
 export default function Roadmap() {
@@ -250,9 +250,7 @@ export default function Roadmap() {
         {/* Generated Roadmap Display */}
         {roadmap && (
           <div className="bg-zinc-900/80 border border-zinc-800/90 backdrop-blur-xl rounded-2xl p-8 sm:p-12 shadow-xl">
-            <div className="prose prose-invert max-w-none prose-headings:font-bold prose-h1:text-xl prose-h2:text-lg prose-h3:text-sm prose-h2:text-cyan-400 prose-h3:text-cyan-200 prose-li:my-1 text-zinc-200 text-xs sm:text-sm leading-relaxed">
-              <ReactMarkdown>{roadmap}</ReactMarkdown>
-            </div>
+            <FormattedMarkdown content={roadmap} />
           </div>
         )}
       </main>

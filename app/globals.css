@@ -24,3 +24,17 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Ensure markdown lists render proper bullet points and decimal numbers */
+.formatted-markdown ul {
+  list-style-type: disc !important;
+}
+
+.formatted-markdown ol {
+  list-style-type: decimal !important;
+}
+
+.formatted-markdown li {
+  display: list-item !important;
+}
+
