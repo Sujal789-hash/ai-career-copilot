@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { adminAuth, getFirebaseInitError } from "@/lib/firebase-admin";
 import { generateGeminiText } from "@/lib/gemini";
 
 export const runtime = "nodejs";
@@ -11,6 +11,14 @@ export async function POST(request: Request) {
     const authorization = request.headers.get("authorization");
     if (!authorization?.startsWith("Bearer ")) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    const firebaseInitError = getFirebaseInitError();
+    if (firebaseInitError) {
+      return NextResponse.json(
+        { error: "Server authentication is not configured." },
+        { status: 500 }
+      );
     }
 
     await adminAuth.verifyIdToken(authorization.slice(7));

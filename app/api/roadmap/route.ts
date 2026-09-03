@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth, adminDb, getFirebaseInitError } from "@/lib/firebase-admin";
 import { generateGeminiText } from "@/lib/gemini";
 
 export const runtime = "nodejs";
@@ -34,6 +34,15 @@ export async function POST(request: Request) {
     }
 
     console.log("ROADMAP: verifying Firebase token");
+
+    const firebaseInitError = getFirebaseInitError();
+    if (firebaseInitError) {
+      console.error("ROADMAP ERROR: Firebase Admin not properly configured:", firebaseInitError);
+      return NextResponse.json(
+        { error: "Server authentication is not configured. Please set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in Vercel environment variables." },
+        { status: 500 }
+      );
+    }
 
     let uid = "";
     try {

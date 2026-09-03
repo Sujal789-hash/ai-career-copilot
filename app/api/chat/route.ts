@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth, adminDb, getFirebaseInitError } from "@/lib/firebase-admin";
 import { generateGeminiText } from "@/lib/gemini";
 
 export const runtime = "nodejs";
@@ -17,6 +17,16 @@ export async function POST(request: Request) {
     }
 
     const idToken = authorization.slice(7).trim();
+
+    const firebaseInitError = getFirebaseInitError();
+    if (firebaseInitError) {
+      console.error("CHAT ERROR: Firebase Admin not properly configured:", firebaseInitError);
+      return NextResponse.json(
+        { error: "Server authentication is not configured. Please set FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in Vercel environment variables." },
+        { status: 500 }
+      );
+    }
+
     let uid = "";
     try {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
