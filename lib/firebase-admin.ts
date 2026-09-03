@@ -12,10 +12,15 @@ const getAdminApp = () => {
     return getApps()[0];
   }
 
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "ai-career-copilot-fbe05";
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+    "ai-career-copilot-fbe05";
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY
-    ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+  const rawPrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  const privateKey = rawPrivateKey
+    ? rawPrivateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n")
     : undefined;
 
   if (clientEmail && privateKey) {
@@ -29,8 +34,12 @@ const getAdminApp = () => {
         projectId,
       });
     } catch (e) {
-      console.warn("FIREBASE ADMIN: cert initialization skipped or failed", e);
+      console.warn("FIREBASE ADMIN: cert initialization failed:", e instanceof Error ? e.message : e);
     }
+  } else {
+    console.warn(
+      "FIREBASE ADMIN: FIREBASE_CLIENT_EMAIL or FIREBASE_PRIVATE_KEY environment variable is not set. Falling back to applicationDefault credentials."
+    );
   }
 
   try {

@@ -33,16 +33,17 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("ROADMAP: verifying Firebase user");
+    console.log("ROADMAP: verifying Firebase token");
 
     let uid = "";
     try {
       const decodedToken = await adminAuth.verifyIdToken(idToken);
       uid = decodedToken.uid;
-      console.log("ROADMAP: user verified");
+      console.log("ROADMAP: Firebase token verified");
+      console.log("ROADMAP: uid obtained");
     } catch (authError) {
       const safeAuthErr = authError instanceof Error ? authError.message : String(authError);
-      console.error("ROADMAP ERROR: Token verification failed:", safeAuthErr);
+      console.error("ROADMAP ERROR:", safeAuthErr);
       return NextResponse.json(
         { error: "Your authentication session has expired or is invalid. Please sign in again." },
         { status: 401 }
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Fetch user profile with fallback
+    console.log("ROADMAP: loading Firestore profile");
     let profile: Record<string, unknown> = {
       name: "Developer",
       education: "Not specified",
@@ -62,7 +64,7 @@ export async function POST(request: Request) {
       const data = profileSnapshot.data();
       if (profileSnapshot.exists && data) {
         profile = data as Record<string, unknown>;
-        console.log("ROADMAP: profile loaded from Firestore");
+        console.log("ROADMAP: profile loaded");
       } else {
         console.log("ROADMAP: profile snapshot empty, using default fallback");
       }
@@ -116,6 +118,15 @@ Structure the response clearly using Markdown formatting with sections:
 Make it specific to the user's current background and target career goal.
 `;
 
+    console.log("ROADMAP: checking Gemini configuration");
+    if (!process.env.GEMINI_API_KEY) {
+      console.error("ROADMAP ERROR: GEMINI_API_KEY is not configured on the server");
+      return NextResponse.json(
+        { error: "GEMINI_API_KEY is not configured on the server" },
+        { status: 500 }
+      );
+    }
+
     console.log("ROADMAP: calling Gemini");
 
     // 5. Generate roadmap with Gemini
@@ -123,15 +134,14 @@ Make it specific to the user's current background and target career goal.
     try {
       roadmap = await generateGeminiText(prompt, 3500);
       console.log("ROADMAP: Gemini response received");
-      console.log("ROADMAP: roadmap generated");
     } catch (geminiError) {
       const safeGeminiErr = geminiError instanceof Error ? geminiError.message : String(geminiError);
-      console.error("ROADMAP ERROR: Gemini generation failed:", safeGeminiErr);
+      console.error("ROADMAP ERROR:", safeGeminiErr);
 
       if (/GEMINI_API_KEY|API key/i.test(safeGeminiErr)) {
         return NextResponse.json(
-          { error: "GEMINI_API_KEY is not configured in Vercel environment variables." },
-          { status: 503 }
+          { error: "GEMINI_API_KEY is not configured on the server" },
+          { status: 500 }
         );
       }
 
@@ -149,13 +159,13 @@ Make it specific to the user's current background and target career goal.
       );
     }
 
-    console.log("ROADMAP: returning response");
+    console.log("ROADMAP: returning roadmap");
     return NextResponse.json({
       roadmap,
     });
   } catch (error) {
     const safeErr = error instanceof Error ? error.message : String(error);
-    console.error("ROADMAP ERROR: Unexpected route exception:", safeErr);
+    console.error("ROADMAP ERROR:", safeErr);
 
     return NextResponse.json(
       { error: "Unable to generate your roadmap at this time. Please try again." },

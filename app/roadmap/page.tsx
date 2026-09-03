@@ -75,15 +75,24 @@ export default function Roadmap() {
       const contentType = response.headers.get("content-type") || "";
 
       if (!response.ok) {
-        let errorMessage = `Unable to generate your roadmap. Please try again.`;
+        let errorMessage = "Unable to generate your roadmap. Please try again.";
 
         if (contentType.includes("application/json")) {
           const errorData = await response.json().catch(() => ({}));
-          errorMessage = errorData.error || errorMessage;
+          if (errorData?.error) {
+            errorMessage = errorData.error;
+          } else if (response.status === 401) {
+            errorMessage = "Unable to authenticate with the server. Please sign in again.";
+          } else if (response.status === 500) {
+            errorMessage = "Server configuration error. Please contact administrator.";
+          }
         } else {
           const text = await response.text().catch(() => "");
           if (text) {
             console.error("ROADMAP API non-JSON response:", text.slice(0, 300));
+          }
+          if (response.status === 401) {
+            errorMessage = "Unable to authenticate with the server. Please sign in again.";
           }
         }
 
