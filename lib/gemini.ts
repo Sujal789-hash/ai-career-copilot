@@ -2,13 +2,11 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const getApiKey = () => process.env.GEMINI_API_KEY || "";
 
-// Active model chain: preferred model -> fallback production models
+// Active model chain: gemini-3.6-flash is recommended by Google API.
+// gemini-3.7-flash is valid but may return 503 under high demand.
 export const GEMINI_MODELS = [
+  "gemini-3.6-flash",
   "gemini-3.7-flash",
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
 ];
 
 export const GEMINI_MODEL = GEMINI_MODELS[0];
